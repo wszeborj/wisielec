@@ -1,5 +1,7 @@
 import sys
 import requests
+import bs4 # pip install beautifulsoup4
+import random
 
 
 class Hangman():
@@ -10,29 +12,46 @@ class Hangman():
         self.phrase = ''
         self.hidden_phrase = []
         self.used_letters = []
+        self.phrases_list = []
         self.number_of_tries = 5  # to do: metoda pytajaca o ilosc mozliwych bledow
+        self.link = r'https://pl.wiktionary.org/wiki/Aneks:Przys%C5%82owia_polskie_-_A'
+        self.all_links = []
 
     def get_phrase(self):
         '''get phrase'''
-        self.phrase = 'Ala ma kota'
-        self.phrase = self.phrase.upper()
-    
-    def website_phrase(self):
-        '''phrase from website'''
-        r = requests.get(r'https://pl.wiktionary.org/wiki/Aneks:Przys%C5%82owia_polskie_-_A')
+        # self.phrase = 'Ala ma kota'
+        # self.phrase = self.phrase.upper()
+        self.phrase = random.choice(self.phrases_list)
+
+    def __get_web_content(self, web_address):
+        '''get content of website'''
+        r = requests.get(web_address)
         try:
             r.raise_for_status()
         except Exception as exc:
             print(f'There was a problem: {exc}')
         
-        # with open('web_content.txt', 'w') as web_file:
-        #     for chunk in r.iter_content(100000):
-        #         web_file.write(str(chunk))
+        return bs4.BeautifulSoup(r.content, 'html.parser')
 
 
-    # def prepare_phrase(self):
-    #     '''preparing phrase'''
-    #     return self.phrase.upper()
+    def get_links(self):
+        '''get links from first site'''
+        soup = self.__get_web_content(self.link)
+        alphabet_soup = soup.select('a')
+        # loop to find every letter with link
+        for letter in alphabet_soup[3:30]:
+            self.all_links.append(self.link[:-1]+letter.getText())
+
+    
+    def website_phrase(self):
+        '''phrase from website'''
+        for address in self.all_links:
+            soup = self.__get_web_content(address)
+            li_soup = soup.find_all('li')
+            phrase_soup=li_soup[:-40]
+            for line in phrase_soup:
+                self.phrases_list.append(line.getText().upper())
+
 
     def get_hidden_phrase(self):
         '''get hidden phrase'''
@@ -41,6 +60,7 @@ class Hangman():
                 self.hidden_phrase.append('_')
             else:
                 self.hidden_phrase.append(x)
+
 
     def get_letter(self) -> str:
         '''get letter from user'''
@@ -83,20 +103,10 @@ class Hangman():
                 break
             print(f'{self.hidden_phrase}')
 
-
-    # def find_phrase(self) -> str:
-    #     '''find phrase'''
-    #     r = requests.get(r'https://pl.wikiquote.org/wiki/Przys%C5%82owia_polskie')
-    #     if r.status_code == 200:
-    #         try:
-    #             p = r.json()
-    #         except json.decoder.JSONDecodeError:
-    #             print('Niepoprawny format')
-    #         else:
-    #             print(p)
-    #     else:
-    #         print(f'Response of http: {r.status_code}')
 if __name__ == '__main__':
     wisielec = Hangman()
+    wisielec.get_links()
+    wisielec.website_phrase()
+    wisielec.get_phrase()
     wisielec.play()
-    # wisielec.website_phrase()
+
