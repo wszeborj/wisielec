@@ -1,6 +1,8 @@
 import sys
 import requests
-import bs4 # pip install beautifulsoup4
+import os
+import pathlib
+import bs4  # pip install beautifulsoup4
 import random
 
 
@@ -12,16 +14,35 @@ class Hangman():
         self.phrase = ''
         self.hidden_phrase = []
         self.used_letters = []
-        self.phrases_list = []
+        self.web_phrases_list = []
+        self.file_phrases_list = []
         self.number_of_tries = 5  # to do: metoda pytajaca o ilosc mozliwych bledow
         self.link = r'https://pl.wiktionary.org/wiki/Aneks:Przys%C5%82owia_polskie_-_A'
+        self.myfile_path = os.path.join(pathlib.Path(
+            __file__).parent.resolve(), "saved_phrases.txt")
         self.all_links = []
 
-    def get_phrase(self):
+    def file_phrases(self):
+        '''phrases from saved file'''
+        with open(self.myfile_path, 'r', encoding='utf-8') as myfile:
+            for line in myfile.readlines():
+                line = line.upper()
+                self.file_phrases_list.append(line)
+
+    def get_phrase(self, source):
         '''get phrase'''
-        # self.phrase = 'Ala ma kota'
-        # self.phrase = self.phrase.upper()
-        self.phrase = random.choice(self.phrases_list)
+        if source == 'web' or source == 'all':
+            self.get_links()
+            self.website_phrase()
+        if source == 'txt' or source == 'all':
+            self.file_phrases()
+        if source == 'web':
+            self.phrase = random.choice(self.web_phrases_list)
+        if source == 'txt':
+            self.phrase = random.choice(self.file_phrases_list)
+        if source == 'all':
+            self.phrase = random.choice(
+                self.file_phrases_list+self.web_phrases_list)
 
     def __get_web_content(self, web_address):
         '''get content of website'''
@@ -30,9 +51,8 @@ class Hangman():
             r.raise_for_status()
         except Exception as exc:
             print(f'There was a problem: {exc}')
-        
-        return bs4.BeautifulSoup(r.content, 'html.parser')
 
+        return bs4.BeautifulSoup(r.content, 'html.parser')
 
     def get_links(self):
         '''get links from first site'''
@@ -42,16 +62,14 @@ class Hangman():
         for letter in alphabet_soup[3:30]:
             self.all_links.append(self.link[:-1]+letter.getText())
 
-    
     def website_phrase(self):
         '''phrase from website'''
         for address in self.all_links:
             soup = self.__get_web_content(address)
             li_soup = soup.find_all('li')
-            phrase_soup=li_soup[:-40]
+            phrase_soup = li_soup[:-40]
             for line in phrase_soup:
-                self.phrases_list.append(line.getText().upper())
-
+                self.web_phrases_list.append(line.getText().upper())
 
     def get_hidden_phrase(self):
         '''get hidden phrase'''
@@ -60,7 +78,6 @@ class Hangman():
                 self.hidden_phrase.append('_')
             else:
                 self.hidden_phrase.append(x)
-
 
     def get_letter(self) -> str:
         '''get letter from user'''
@@ -73,9 +90,9 @@ class Hangman():
             else:
                 print('blad! sprobuj jeszcze raz.')
 
-    def play(self):
+    def play(self, source):
         '''play'''
-        self.get_phrase()
+        self.get_phrase(source)
         self.get_hidden_phrase()
 
         while True:
@@ -99,14 +116,11 @@ class Hangman():
 
             if '_' not in self.hidden_phrase:
                 print('BRAWO! WYGRALES!')
-                print('Odkryte haslo to: {self.phrase}')
+                print(f'Odkryte haslo to: {self.phrase}')
                 break
             print(f'{self.hidden_phrase}')
 
+
 if __name__ == '__main__':
     wisielec = Hangman()
-    wisielec.get_links()
-    wisielec.website_phrase()
-    wisielec.get_phrase()
-    wisielec.play()
-
+    wisielec.play('all')
